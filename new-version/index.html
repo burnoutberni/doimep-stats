@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<style>
+
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  margin: auto;
+  position: relative;
+  width: 300px;
+}
+
+svg {
+  top: 100px;
+  position: absolute;
+}
+
+p {
+  position: absolute;
+}
+
+path:hover {
+  opacity: 0.5;
+}
+
+#main {
+  width:300px;
+  height:400px;
+}
+
+img {
+/*  margin-left: auto;
+  margin-right: auto;*/
+  position: absolute;
+  left: 65px;
+  top: 190px;
+}
+
+
+</style>
+</head>
+
+
+<body>
+<p id="text">
+Loading (this could take some time)...
+</p>
+<div id="main">
+<img></img>
+</div>
+
+<script src="js/lib/jquery-1.11.0.min.js"></script>
+<script src="js/lib/jquery.csv-0.71.min.js"></script>
+<script src="bootstrap/js/bootstrap.min.js"></script>
+<script src="js/script.js"></script>
+<script src="js/lib/d3.v3.min.js"></script>
+<script>
+$.ajax(spreadsheetUrl).done(function(csv){
+    $("p").html("");
+    var documentsArray = $.csv.toArrays(csv);
+
+function createCircle(layerNo){
+var width = 300,
+    height = 400,
+    radius = Math.min(width, height) / 2,
+    color = d3.scale.category20c();
+
+var svg = d3.select("#main").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+  .append("g")
+    .attr("transform", "translate(" + width / 2 + "," + height * .52 + ")");
+
+var partition = d3.layout.partition()
+    .sort(null)
+    .size([2 * Math.PI, radius * radius])
+    .value(function(d) { 
+       if (layerNo === 2) {
+         return d.size;
+       }
+       if (layerNo === 1) {
+         return 1;
+       }
+    });
+
+var arc = d3.svg.arc()
+    .startAngle(function(d) { return d.x; })
+    .endAngle(function(d) { return d.x + d.dx; })
+    .innerRadius(function(d) { return Math.sqrt(d.y); })
+    .outerRadius(function(d) { return Math.sqrt(d.y + d.dy); });
+
+var root = additionalSalary(documentsArray);
+  var path = svg.datum(root).selectAll("path")
+      .data(partition.nodes)
+    .enter().append("path")
+      .attr("display", function(d) { return d.depth ? null : "none"; }) // hide center ring
+      .attr("display", function(d) { 
+         if (layerNo === 2 && d.depth < 2) {
+           return "none";
+         }
+         if (layerNo === 1 && d.depth >= 2 || layerNo === 1 && d.depth === 0) {
+           return "none";
+         }
+      }) // hide inner ring
+      .attr("d", arc)
+      .attr("id", function(d) { return d.name; })
+      .style("stroke", "#fff")
+      .style("fill", function(d) { 
+	var element = d;
+          switch (element.name) {
+            case "PPE": return "#3399FF";
+            case "S&D": return "#FF0000";
+            case "ALDE": return "#FFFF00";
+            case "Verts/ALE": return "#009900";
+            case "GUE/NGL": return "#990000";
+            case "ECR": return "#0000FF";
+            case '["NA", "NI"]': return "#999999";
+            case "EFD": return "#FF9900";
+          }
+	if (element.parent) {
+          switch (element.parent.name) {
+            case "PPE": return "#3399FF";
+            case "S&D": return "#FF0000";
+            case "ALDE": return "#FFFF00";
+            case "Verts/ALE": return "#009900";
+            case "GUE/NGL": return "#990000";
+            case "ECR": return "#0000FF";
+            case '["NA", "NI"]': return "#999999";
+            case "EFD": return "#FF9900";
+          }
+	}
+	return "black";
+      })
+      .style("fill-rule", "evenodd")
+      .each(stash);
+
+  d3.selectAll("input").on("change", function change() {
+    var value = this.value === "count"
+        ? function() { return 1; }
+        : function(d) { return d.size; };
+
+    path
+        .data(partition.value(value).nodes)
+      .transition()
+        .duration(1500)
+        .attrTween("d", arcTween);
+  });
+
+// Stash the old values for transition.
+function stash(d) {
+  d.x0 = d.x;
+  d.dx0 = d.dx;
+}
+
+// Interpolate the arcs in data space.
+function arcTween(a) {
+  var i = d3.interpolate({x: a.x0, dx: a.dx0}, a);
+  return function(t) {
+    var b = i(t);
+    a.x0 = b.x;
+    a.dx0 = b.dx;
+    return arc(b);
+  };
+}
+
+d3.select(self.frameElement).style("height", height + "px");
+}
+
+createCircle(1);
+createCircle(2);
+
+document.onmouseover = function(e) {
+    var targ;
+    if (!e) var e = window.event;
+    if (e.target) targ = e.target;
+    else if (e.srcElement) targ = e.srcElement;
+    if (targ.nodeType == 3) // defeat Safari bug
+      targ = targ.parentNode;
+    if (targ.id) {
+      mepInfos = additionalSalaryMep(documentsArray, targ.id);
+      $('p').html("This is MEP " + mepInfos.first_name + " " + mepInfos.name + ", " + mepInfos.group + ", who earns at least € " + mepInfos.salary + 	",- a month besides my salary as a Member of the European Parliament.");
+      $('img').attr("src","");
+      $('img').attr("src","https://memopol.lqdn.fr/europe/parliament/mep/"+targ.id+"/picture.jpg");
+    }
+};
+
+document.onclick = function(e) {
+    var targ;
+    if (!e) var e = window.event;
+    if (e.target) targ = e.target;
+    else if (e.srcElement) targ = e.srcElement;
+    if (targ.nodeType == 3) // defeat Safari bug
+      targ = targ.parentNode;
+    if (targ.id) {
+      mepInfos = additionalSalaryMep(documentsArray, targ.id);
+      window.open(mepInfos.url);
+    }
+};
+
+
+
+});
+</script>
+</body>
