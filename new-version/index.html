@@ -178,7 +178,7 @@ document.onmouseover = function(e) {
       targ = targ.parentNode;
     if (targ.id) {
       mepInfos = additionalSalaryMep(documentsArray, targ.id);
-      $('p').html("This is MEP " + mepInfos.first_name + " " + mepInfos.name + ", " + mepInfos.group + ", who earns at least € " + mepInfos.salary + 	",- a month besides my salary as a Member of the European Parliament.");
+      $('p').html("This is MEP " + mepInfos.first_name + " " + mepInfos.name + ", " + mepInfos.group + ", who earns <b>at least € " + mepInfos.salary + 	",- a month</b> besides my salary as a Member of the European Parliament.");
       $('img').attr("src","");
       $('img').attr("src","https://memopol.lqdn.fr/europe/parliament/mep/"+targ.id+"/picture.jpg");
     }
